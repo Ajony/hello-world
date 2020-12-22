@@ -1,0 +1,95 @@
+ public void downloadFile(Long id, String mac, HttpServletResponse response) {
+        Firmware firmware = firmwareDao.findOne(id);
+        if (null == firmware) {
+            log.error("firmware[id={}] is not exist!", id);
+            //throw new AppException();
+            return;
+        }
+        String fileName = firmware.getPackageName();
+        //第一步：设置响应类型：应用程序强制下载。将ContentType设置成"application/force-download"就不需要设置具体的附件类型了
+        //response.setContentType("application/force-download");
+        //第二步：读取文件
+        String path = firmware.getUploadPath();
+        Long curReadLength = 0L;
+        Integer downLoadProcess = 0;
+        Long fileSize = firmware.getFileSize();
+        WSDownloadProcess wsDownloadProcess = new WSDownloadProcess();
+        wsDownloadProcess.setMac(mac);
+        Gson gson = new Gson();
+        FileInputStream fis = null;
+        BufferedInputStream bis = null;
+        List<Terminal> terminals = terminalDao.findByMac(mac);
+        Long terminalId = CollectionUtils.isEmpty(terminals) ? -1L : terminals.get(0).getId();
+        try {
+            fis = new FileInputStream(path);
+            FileChannel fc = fis.getChannel();
+            //设置响应头，对文件进行url编码
+            // 配置文件下载
+//            response.setHeader("content-type", "application/octet-stream");
+//            response.setHeader("content-length",fileSize.toString());
+            response.setContentType("application/octet-stream");
+            response.setContentLengthLong(fileSize);
+            // 下载文件能正常显示中文
+            response.setHeader("Content-Disposition", "attachment;filename=" + URLEncoder.encode(fileName, "UTF-8"));
+            //第三步：开始copy
+            OutputStream out = response.getOutputStream();
+            byte[] b = new byte[1024];
+            int len = 0;
+            bis = new BufferedInputStream(fis);
+            while ((len = bis.read(b)) != -1) {
+                curReadLength += len;
+                out.write(b, 0, len);
+                Long processTemp = (curReadLength * 100) / fileSize;
+                if (processTemp.intValue() - downLoadProcess > 5) {
+                    //websocket通知用户
+                    downLoadProcess = processTemp.intValue();
+                    wsDownloadProcess.setProcess(downLoadProcess);
+                    wsDownloadProcess.setStage("文件下载中");
+                    webSocketImpl.sendMsg(gson.toJson(wsDownloadProcess));
+                }
+            }
+
+            //todo 性能如果扛不住就使用 MappedByteBuffer
+//            MappedByteBuffer mbb = fc.map(FileChannel.MapMode.READ_ONLY, 0, fc.size());
+//            mbb.flip();
+//            while (mbb.hasRemaining()) {
+//                out.write(mbb.get());
+//            }
+
+
+            /////----------------------------------------------------////////////
+            out.flush();
+            out.close();
+            bis.close();
+            fis.close();
+            wsDownloadProcess.setProcess(100);
+            wsDownloadProcess.setStage("文件下载成功");
+            webSocketImpl.sendMsg(gson.toJson(wsDownloadProcess));
+            //回调结束事件
+            asyncEventHandler.publish(EventType.DOWNLOAD_FINISH, new RequestData<>(terminalId));
+        } catch (IOException e) {
+            e.printStackTrace();
+            wsDownloadProcess.setProcess(-1);
+            wsDownloadProcess.setStage("终端刷机失败：文件下载失败");
+            webSocketImpl.sendMsg(gson.toJson(wsDownloadProcess));
+            //回调下载失败事件
+            asyncEventHandler.publish(EventType.DOWNLOAD_FAILED, new RequestData<>(terminalId));
+            throw new AppException("终端刷机失败：文件下载失败");
+        } finally {
+            if (bis != null) {
+                try {
+                    bis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            if (fis != null) {
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+        }
+    }
