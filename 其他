@@ -1,0 +1,93 @@
+
+github代理
+1、全局代理设置
+git config --global http.proxy http://127.0.0.1:1080                  http://devproxy.h3c.com:8080          
+git config --global https.proxy https://127.0.0.1:1080
+
+
+2、只对GitHub进行代理
+git config --global http.https://github.com.proxy https://127.0.0.1:1080
+git config --global https.https://github.com.proxy https://127.0.0.1:1080
+
+
+取消代理
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+
+
+查看已有配置
+git config --global -l
+git config --global http.postBuffer 524288000
+
+
+git忽略ssl证书
+git config --global http.sslVerify false
+
+
+Outlook2013 左侧导航栏:Outlook.exe /resetfoldernames
+
+
+Kafka启动命令
+注：先进入kafka目录
+
+1）常规模式启动kafka
+
+bin/kafka-server-start.sh config/server.properties
+
+2）进程守护模式启动kafka
+
+nohup bin/kafka-server-start.sh config/server.properties >/dev/null 2>&1 & 
+
+Kafka关闭命令
+注：先进入kafka目录
+
+bin/kafka-server-stop.sh
+
+查看topic
+	bin/kafka-topics.sh --list --zookeeper localhost:2181
+
+查看topic信息
+bin/kafka-console-consumer.sh --bootstrap-server 10.99.207.85:9092 --topic hello --from-beginning
+
+
+Java远程调试
+-Xdebug -Xnoagent -Djava.compiler=NONE -Xrunjdwp:transport=dt_socket,server=y,address=18888,suspend=n
+
+
+添加环境变量
+vim add_environment.sh
+export VDI_SERVICE_PROVIDER_VIEWSCREEN="cloudos"
+echo $VDI_SERVICE_PROVIDER_VIEWSCREEN
+source add_environment.sh
+
+删除环境变量
+unset VDI_SERVICE_PROVIDER_VIEWSCREEN
+ 
+
+
+tcpdump抓包request&&response
+tcpdump -i ens3 -A -s 0 'tcp port 18989 and (((ip[2:2] - ((ip[0]&0xf)<<2)) - ((tcp[12]&0xf0)>>2)) != 0)' -w /home/lgq/dump.cap
+
+
+
+设置root登录
+sudo passwd root
+密码
+su root
+
+配置网卡
+vim /etc/network/interfaces
+重启网卡
+/etc/init.d/newworking restart
+
+
+
+ssh设置root账号登录 ubuntu 16.04.6
+vim /etc/ssh/sshd_config
+PermitRootLogin yes
+systemctl restart ssh
+
+
+
+docker exec -it 容器 /bin/sh
+redis-cli -h host -p port -a password
